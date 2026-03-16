@@ -13,6 +13,7 @@ import { useUnread } from '../context/UnreadContext';
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 
 // Main screens
 import MarketScreen from '../screens/main/MarketScreen';
@@ -92,11 +93,11 @@ function AuthStack() {
 }
 
 export default function Navigation() {
-  const { session, loading } = useAuth();
+  const { session, loading, passwordRecovery } = useAuth();
   const { loadingLeagues } = useLeague();
   const { colors } = useTheme();
 
-  if (loading || (session && loadingLeagues)) {
+  if (loading || (session && loadingLeagues && !passwordRecovery)) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.bg }]}>
         <Text style={styles.logo}>📈</Text>
@@ -107,7 +108,11 @@ export default function Navigation() {
 
   return (
     <NavigationContainer>
-      {session ? <MainTabs /> : <AuthStack />}
+      {passwordRecovery ? (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        </Stack.Navigator>
+      ) : session ? <MainTabs /> : <AuthStack />}
     </NavigationContainer>
   );
 }

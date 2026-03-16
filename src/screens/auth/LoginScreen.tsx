@@ -16,7 +16,11 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { signIn } = useAuth();
+  const [resetEmail, setResetEmail] = useState('');
+  const [showReset, setShowReset] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const { signIn, sendPasswordReset } = useAuth();
   const { colors } = useTheme();
 
   async function handleLogin() {
@@ -77,6 +81,44 @@ export default function LoginScreen({ navigation }: Props) {
           )}
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={() => { setShowReset(!showReset); setResetSent(false); }}>
+          <Text style={[styles.link, { color: colors.subtext, marginBottom: 12 }]}>Şifreni mi unuttun? <Text style={[styles.linkBold, { color: colors.accent }]}>Sıfırla</Text></Text>
+        </TouchableOpacity>
+
+        {showReset && (
+          <View style={[styles.resetBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {resetSent ? (
+              <Text style={{ color: '#22c55e', textAlign: 'center', fontSize: 14 }}>Şifre sıfırlama linki e-postana gönderildi.</Text>
+            ) : (
+              <>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border, marginBottom: 10 }]}
+                  placeholder="E-posta adresin"
+                  placeholderTextColor={colors.subtext}
+                  value={resetEmail}
+                  onChangeText={setResetEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: colors.accent }]}
+                  disabled={resetLoading}
+                  onPress={async () => {
+                    if (!resetEmail) return;
+                    setResetLoading(true);
+                    const { error } = await sendPasswordReset(resetEmail.trim());
+                    setResetLoading(false);
+                    if (!error) setResetSent(true);
+                    else setError(error.message);
+                  }}
+                >
+                  {resetLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Link Gönder</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+
         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
           <Text style={[styles.link, { color: colors.subtext }]}>Hesabın yok mu? <Text style={[styles.linkBold, { color: colors.accent }]}>Kayıt Ol</Text></Text>
         </TouchableOpacity>
@@ -97,4 +139,5 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   link: { textAlign: 'center', fontSize: 14 },
   linkBold: { fontWeight: 'bold' },
+  resetBox: { borderRadius: 10, padding: 16, marginBottom: 16, borderWidth: 1 },
 });
