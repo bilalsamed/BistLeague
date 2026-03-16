@@ -1,20 +1,35 @@
+import 'react-native-gesture-handler';
+import React from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { AuthProvider } from './src/context/AuthContext';
+import { LeagueProvider } from './src/context/LeagueContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
+import { UnreadProvider } from './src/context/UnreadContext';
+import Navigation from './src/navigation';
 
-export default function App() {
+function AppContent() {
+  const { isDark } = useTheme();
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Navigation />
+    </>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <SafeAreaProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <LeagueProvider>
+          <UnreadProvider>
+            <AppContent />
+          </UnreadProvider>
+        </LeagueProvider>
+      </AuthProvider>
+    </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}
