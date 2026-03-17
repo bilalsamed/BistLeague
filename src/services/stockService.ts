@@ -2,9 +2,7 @@ import { Stock, StockHistory } from '../types';
 import { supabase } from './supabase';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 const EDGE_PROXY = `${SUPABASE_URL}/functions/v1/yahoo-proxy`;
-const LOCAL_PROXY = 'http://localhost:3001';
 
 export type StockSector =
   | 'Bankacılık' | 'Holding' | 'Enerji' | 'Sanayi' | 'Havacılık'
@@ -163,11 +161,24 @@ export const BIST_STOCKS: { symbol: string; name: string; sector: StockSector }[
   { symbol: 'SERVE', name: 'Serve Kırtasiye',       sector: 'Perakende' },
 ];
 
+async function fetchWithTimeout(url: string, options?: RequestInit, ms = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer);
+    return response;
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
 // Edge Function proxy (CORS-safe, works everywhere)
 async function fetchViaEdge(symbols: string[]): Promise<Stock[]> {
   const yahooSymbols = symbols.map(s => `${s}.IS`).join(',');
   const path = `/v8/finance/spark?symbols=${yahooSymbols}&range=1d&interval=1d`;
-  const response = await fetch(`${EDGE_PROXY}${path}`);
+  const response = await fetchWithTimeout(`${EDGE_PROXY}${path}`);
   if (!response.ok) throw new Error(`Edge error: ${response.status}`);
   const data = await response.json();
   return parseSparkData(data, symbols);
@@ -177,7 +188,7 @@ async function fetchViaEdge(symbols: string[]): Promise<Stock[]> {
 async function fetchViaYahooDirectly(symbols: string[]): Promise<Stock[]> {
   const yahooSymbols = symbols.map(s => `${s}.IS`).join(',');
   const url = `https://query2.finance.yahoo.com/v8/finance/spark?symbols=${yahooSymbols}&range=1d&interval=1d`;
-  const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const response = await fetchWithTimeout(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!response.ok) throw new Error('Yahoo direct error');
   const data = await response.json();
   return parseSparkData(data, symbols);
@@ -191,6 +202,8 @@ function parseSparkData(data: any, symbols: string[]): Stock[] {
     const change = price - prevClose;
     const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
     const stockInfo = BIST_STOCKS.find(s => s.symbol === symbol);
+    const timestamps: number[] = entry?.timestamp || [];
+    const marketTime = timestamps.length > 0 ? timestamps[timestamps.length - 1] : undefined;
     return {
       symbol,
       name: stockInfo?.name || symbol,
@@ -200,6 +213,7 @@ function parseSparkData(data: any, symbols: string[]): Stock[] {
       change_percent: changePercent,
       volume: 0,
       last_updated: new Date().toISOString(),
+      market_time: marketTime,
     };
   }).filter(s => s.price > 0);
 }
@@ -239,12 +253,13 @@ export async function fetchStockQuotes(symbols: string[]): Promise<Stock[]> {
   return allStocks;
 }
 
+
 export async function fetchStockPrice(symbol: string): Promise<number | null> {
   try {
     const stocks = await fetchStockQuotes([symbol]);
     return stocks[0]?.price ?? null;
   } catch {
-    const { data } = await supabase.from('stocks_cache').select('price').eq('symbol', symbol).single();
+    const { data } = await supabase.from('stocks_cache').select('price').eq('symbol', symbol).maybeSingle();
     return data?.price ?? null;
   }
 }
@@ -268,7 +283,9 @@ export async function fetchStockHistory(symbol: string, range: '1d' | '5d' | '1m
     const timestamps: number[] = result.timestamp || [];
     const ohlcv = result.indicators?.quote?.[0] || {};
     return timestamps.map((ts, i) => ({
-      date: new Date(ts * 1000).toISOString().split('T')[0],
+      date: range === '1d'
+        ? new Date(ts * 1000).toISOString()
+        : new Date(ts * 1000).toISOString().split('T')[0],
       open: ohlcv.open?.[i] || 0,
       high: ohlcv.high?.[i] || 0,
       low: ohlcv.low?.[i] || 0,
@@ -308,6 +325,7 @@ async function fetchStocksFromCache(symbols: string[]): Promise<Stock[]> {
     last_updated: d.last_updated,
   }));
 }
+
 
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('tr-TR', {

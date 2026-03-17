@@ -1,14 +1,39 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useLeague } from '../../context/LeagueContext';
 import { useTheme } from '../../context/ThemeContext';
+import { scheduleMarketNotifications, cancelMarketNotifications, requestNotificationPermission } from '../../services/notificationService';
+import * as Notifications from 'expo-notifications';
 
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
   const { selectedLeague, membership } = useLeague();
   const { colors, isDark, toggleTheme } = useTheme();
   const [confirming, setConfirming] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    checkNotifStatus();
+  }, []);
+
+  async function checkNotifStatus() {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    setNotifEnabled(scheduled.some(n => n.content.data?.type === 'market_open'));
+  }
+
+  async function toggleNotifications() {
+    if (notifEnabled) {
+      await cancelMarketNotifications();
+      setNotifEnabled(false);
+    } else {
+      const granted = await requestNotificationPermission();
+      if (!granted) return;
+      await scheduleMarketNotifications();
+      setNotifEnabled(true);
+    }
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -51,6 +76,23 @@ export default function ProfileScreen() {
           <View style={[styles.themeToggleThumb, { marginLeft: isDark ? 2 : 18 }]} />
         </View>
       </TouchableOpacity>
+
+      {/* Notifications Toggle */}
+      {Platform.OS !== 'web' && (
+        <TouchableOpacity
+          style={[styles.themeBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={toggleNotifications}
+        >
+          <Text style={styles.themeIcon}>🔔</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.themeLabel, { color: colors.text }]}>Borsa Bildirimleri</Text>
+            <Text style={[{ fontSize: 11, color: colors.subtext }]}>Açılış 10:00 • Kapanış 18:00</Text>
+          </View>
+          <View style={[styles.themeToggle, { backgroundColor: notifEnabled ? colors.accent : colors.surfaceAlt }]}>
+            <View style={[styles.themeToggleThumb, { marginLeft: notifEnabled ? 18 : 2 }]} />
+          </View>
+        </TouchableOpacity>
+      )}
 
       {confirming ? (
         <View style={[styles.confirmBox, { backgroundColor: colors.surface, borderColor: colors.dangerBg }]}>

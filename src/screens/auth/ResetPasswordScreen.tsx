@@ -12,6 +12,8 @@ export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const { updatePassword } = useAuth();
   const { colors } = useTheme();
 
@@ -52,22 +54,32 @@ export default function ResetPasswordScreen() {
           </View>
         )}
 
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-          placeholder="Yeni şifre"
-          placeholderTextColor={colors.subtext}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-          placeholder="Şifreyi tekrarla"
-          placeholderTextColor={colors.subtext}
-          value={confirm}
-          onChangeText={setConfirm}
-          secureTextEntry
-        />
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border, marginBottom: 0, flex: 1 }]}
+            placeholder="Yeni şifre"
+            placeholderTextColor={colors.subtext}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
+            <Text style={[styles.eyeIcon, { color: colors.subtext }]}>{showPassword ? '🙈' : '👁'}</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border, marginBottom: 0, flex: 1 }]}
+            placeholder="Şifreyi tekrarla"
+            placeholderTextColor={colors.subtext}
+            value={confirm}
+            onChangeText={setConfirm}
+            secureTextEntry={!showConfirm}
+          />
+          <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowConfirm(v => !v)}>
+            <Text style={[styles.eyeIcon, { color: colors.subtext }]}>{showConfirm ? '🙈' : '👁'}</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.accent }]}
@@ -91,6 +103,9 @@ const styles = StyleSheet.create({
   successBanner: { borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1 },
   successText: { fontSize: 14, textAlign: 'center' },
   input: { borderRadius: 10, padding: 14, marginBottom: 14, fontSize: 15, borderWidth: 1 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  eyeBtn: { position: 'absolute', right: 14, padding: 4 },
+  eyeIcon: { fontSize: 18 },
   button: { borderRadius: 10, padding: 15, alignItems: 'center', marginTop: 8 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

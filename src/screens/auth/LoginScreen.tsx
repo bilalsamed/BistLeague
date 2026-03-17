@@ -20,6 +20,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [showReset, setShowReset] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { signIn, sendPasswordReset } = useAuth();
   const { colors } = useTheme();
 
@@ -64,14 +65,19 @@ export default function LoginScreen({ navigation }: Props) {
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-          placeholder="Şifre"
-          placeholderTextColor={colors.subtext}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border, marginBottom: 0, flex: 1 }]}
+            placeholder="Şifre"
+            placeholderTextColor={colors.subtext}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
+            <Text style={[styles.eyeIcon, { color: colors.subtext }]}>{showPassword ? '🙈' : '👁'}</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={[styles.button, { backgroundColor: colors.accent }]} onPress={handleLogin} disabled={loading}>
           {loading ? (
@@ -135,6 +141,9 @@ const styles = StyleSheet.create({
   errorBanner: { borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1 },
   errorText: { fontSize: 14, textAlign: 'center' },
   input: { borderRadius: 10, padding: 14, marginBottom: 14, fontSize: 15, borderWidth: 1 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  eyeBtn: { position: 'absolute', right: 14, padding: 4 },
+  eyeIcon: { fontSize: 18 },
   button: { borderRadius: 10, padding: 15, alignItems: 'center', marginTop: 8, marginBottom: 20 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   link: { textAlign: 'center', fontSize: 14 },

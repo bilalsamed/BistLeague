@@ -76,15 +76,19 @@ export default function MarketScreen({ navigation }: any) {
 
     // Check price alerts
     if (user) {
-      const triggered = await checkAlerts(user.id, allStocks);
-      if (triggered.length > 0) {
-        sendBrowserNotification(triggered, allStocks);
-        const msgs = triggered.map(a => {
-          const s = allStocks.find(st => st.symbol === a.stock_symbol);
-          return `${a.stock_symbol} alarmı tetiklendi! (₺${s?.price?.toFixed(2) || a.target_price})`;
-        });
-        setAlertBanner(msgs.join(' • '));
-        setTimeout(() => setAlertBanner(null), 5000);
+      try {
+        const triggered = await checkAlerts(user.id, allStocks);
+        if (triggered.length > 0) {
+          try { sendBrowserNotification(triggered, allStocks); } catch {}
+          const msgs = triggered.map(a => {
+            const s = allStocks.find(st => st.symbol === a.stock_symbol);
+            return `${a.stock_symbol} alarmı tetiklendi! (₺${s?.price?.toFixed(2) || a.target_price})`;
+          });
+          setAlertBanner(msgs.join(' • '));
+          setTimeout(() => setAlertBanner(null), 5000);
+        }
+      } catch (e) {
+        console.warn('Alert check failed:', e);
       }
     }
   }, [user]);
@@ -191,6 +195,11 @@ export default function MarketScreen({ navigation }: any) {
             <View style={styles.left}>
               <Text style={[styles.symbol, { color: colors.text }]}>{item.symbol}</Text>
               <Text style={[styles.name, { color: colors.subtext }]} numberOfLines={1}>{item.name}</Text>
+              {item.market_time ? (
+                <Text style={[styles.stockTime, { color: colors.subtext }]}>
+                  {new Date(item.market_time * 1000).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              ) : null}
             </View>
             <View style={styles.right}>
               <Text style={[styles.price, { color: colors.text }]}>{item.price > 0 ? formatCurrency(item.price) : '—'}</Text>
@@ -247,6 +256,7 @@ const styles = StyleSheet.create({
   rightBottom: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
   symbol: { fontWeight: 'bold', fontSize: 15 },
   name: { fontSize: 12, marginTop: 2 },
+  stockTime: { fontSize: 10, marginTop: 1, opacity: 0.6 },
   price: { fontSize: 15, fontWeight: '600' },
   changeBadge: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3 },
   changeText: { fontSize: 12, fontWeight: 'bold' },

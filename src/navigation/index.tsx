@@ -24,6 +24,7 @@ import LeaderboardScreen from '../screens/main/LeaderboardScreen';
 import HistoryScreen from '../screens/main/HistoryScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import ChatScreen from '../screens/main/ChatScreen';
+import OnboardingScreen from '../screens/main/OnboardingScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -52,6 +53,15 @@ function MarketStack() {
   );
 }
 
+function PortfolioStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="PortfolioList" component={PortfolioScreen} />
+      <Stack.Screen name="StockDetail" component={StockDetailScreen} />
+    </Stack.Navigator>
+  );
+}
+
 function MainTabs() {
   const { colors } = useTheme();
   const { chatUnread } = useUnread();
@@ -73,7 +83,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Market" component={MarketStack} options={{ tabBarLabel: 'Piyasa' }} />
-      <Tab.Screen name="Portfolio" component={PortfolioScreen} options={{ tabBarLabel: 'Portföy' }} />
+      <Tab.Screen name="Portfolio" component={PortfolioStack} options={{ tabBarLabel: 'Portföy' }} />
       <Tab.Screen name="Leagues" component={LeaguesScreen} options={{ tabBarLabel: 'Ligler' }} />
       <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ tabBarLabel: 'Sıralama' }} />
       <Tab.Screen name="Chat" component={ChatScreen} options={{ tabBarLabel: 'Sohbet', tabBarBadge: chatUnread > 0 ? chatUnread : undefined }} />
@@ -94,7 +104,7 @@ function AuthStack() {
 
 export default function Navigation() {
   const { session, loading, passwordRecovery } = useAuth();
-  const { loadingLeagues } = useLeague();
+  const { loadingLeagues, leagues } = useLeague();
   const { colors } = useTheme();
 
   if (loading || (session && loadingLeagues && !passwordRecovery)) {
@@ -112,7 +122,9 @@ export default function Navigation() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         </Stack.Navigator>
-      ) : session ? <MainTabs /> : <AuthStack />}
+      ) : session ? (
+        leagues.length === 0 ? <OnboardingScreen /> : <MainTabs />
+      ) : <AuthStack />}
     </NavigationContainer>
   );
 }

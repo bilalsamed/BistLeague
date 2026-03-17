@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { League, LeagueMember, Portfolio, Transaction } from '../types';
+import { League, LeagueMember, Portfolio, Transaction, PortfolioSnapshot } from '../types';
 import { fetchStockPrice } from './stockService';
 
 const COMMISSION_RATE = 0.002; // %0.2
@@ -12,7 +12,7 @@ export async function createLeague(name: string, userId: string, startingBalance
   let unique = false;
   while (!unique) {
     code = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const { data } = await supabase.from('leagues').select('id').eq('code', code).single();
+    const { data } = await supabase.from('leagues').select('id').eq('code', code).maybeSingle();
     if (!data) unique = true;
   }
 
@@ -20,7 +20,7 @@ export async function createLeague(name: string, userId: string, startingBalance
     .from('leagues')
     .insert({ name, code, creator_id: userId, starting_balance: startingBalance })
     .select()
-    .single();
+    .maybeSingle();
 
   if (error || !data) return null;
 
@@ -34,7 +34,7 @@ export async function joinLeagueByCode(code: string, userId: string): Promise<{ 
     .from('leagues')
     .select('*')
     .eq('code', code.toUpperCase())
-    .single();
+    .maybeSingle();
 
   if (!league) return { success: false, error: 'Geçersiz lig kodu.' };
 
@@ -44,7 +44,7 @@ export async function joinLeagueByCode(code: string, userId: string): Promise<{ 
     .select('id')
     .eq('league_id', league.id)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   if (existing) return { success: false, error: 'Zaten bu ligdeysin.' };
 
@@ -76,7 +76,7 @@ export async function getLeagueMembership(leagueId: string, userId: string): Pro
     .select('*')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
   return data || null;
 }
 
@@ -126,13 +126,14 @@ export async function calculatePortfolioValue(userId: string, leagueId: string):
 
   if (!positions || positions.length === 0) return 0;
 
-  let total = 0;
-  for (const pos of positions) {
-    const price = await fetchStockPrice(pos.stock_symbol);
-    if (price) total += price * pos.quantity;
-    else total += pos.avg_buy_price * pos.quantity; // fallback to avg buy
-  }
-  return total;
+  const values = await Promise.all(
+    positions.map(async (pos: any) => {
+      const price = await fetchStockPrice(pos.stock_symbol);
+      const unitPrice = price ?? (pos.avg_buy_price || 0);
+      return unitPrice * (pos.quantity || 0);
+    })
+  );
+  return values.reduce((sum, v) => sum + v, 0);
 }
 
 // ─── TRADING ──────────────────────────────────────────────
@@ -146,7 +147,7 @@ export async function buyStock(
   price: number
 ): Promise<{ success: boolean; error?: string }> {
   const totalCost = price * quantity;
-  const commission = Math.ceil(totalCost * COMMISSION_RATE);
+  const commission = Math.round(totalCost * COMMISSION_RATE * 100) / 100;
   const totalDeducted = totalCost + commission;
 
   // Get current cash
@@ -155,7 +156,7 @@ export async function buyStock(
     .select('cash_balance')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   if (!member) return { success: false, error: 'Üyelik bulunamadı.' };
   if (member.cash_balance < totalDeducted) return { success: false, error: 'Yetersiz bakiye.' };
@@ -178,7 +179,7 @@ export async function buyStock(
     .eq('user_id', userId)
     .eq('league_id', leagueId)
     .eq('stock_symbol', symbol)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     const newQty = existing.quantity + quantity;
@@ -228,14 +229,14 @@ export async function sellStock(
     .eq('user_id', userId)
     .eq('league_id', leagueId)
     .eq('stock_symbol', symbol)
-    .single();
+    .maybeSingle();
 
   if (!position || position.quantity < quantity) {
     return { success: false, error: 'Yeterli hisse miktarı yok.' };
   }
 
   const totalReceived = price * quantity;
-  const commission = Math.ceil(totalReceived * COMMISSION_RATE);
+  const commission = Math.round(totalReceived * COMMISSION_RATE * 100) / 100;
   const netReceived = totalReceived - commission;
 
   // Update portfolio
@@ -255,7 +256,7 @@ export async function sellStock(
     .select('cash_balance')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   if (member) {
     await supabase
@@ -396,6 +397,29 @@ export async function checkAndTriggerAlerts(userId: string, symbol: string, curr
     }
   }
   return triggered;
+}
+
+// ─── PORTFOLIO SNAPSHOTS ──────────────────────────────────
+
+export async function savePortfolioSnapshot(userId: string, leagueId: string, totalValue: number): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  await supabase.from('portfolio_snapshots').upsert(
+    { user_id: userId, league_id: leagueId, total_value: totalValue, snapshot_date: today },
+    { onConflict: 'user_id,league_id,snapshot_date' }
+  );
+}
+
+export async function getPortfolioSnapshots(userId: string, leagueId: string, days = 30): Promise<PortfolioSnapshot[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const { data } = await supabase
+    .from('portfolio_snapshots')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('league_id', leagueId)
+    .gte('snapshot_date', since.toISOString().split('T')[0])
+    .order('snapshot_date', { ascending: true });
+  return data || [];
 }
 
 // ─── LEAGUE CHAT ──────────────────────────────────────────

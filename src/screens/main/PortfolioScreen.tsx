@@ -2,14 +2,15 @@ import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
-  RefreshControl, TouchableOpacity, ScrollView,
+  RefreshControl, TouchableOpacity, ScrollView, useWindowDimensions,
 } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
 import { useAuth } from '../../context/AuthContext';
 import { useLeague } from '../../context/LeagueContext';
 import { useTheme } from '../../context/ThemeContext';
-import { getUserPortfolio, getLeagueMembership } from '../../services/dbService';
+import { getUserPortfolio, getLeagueMembership, savePortfolioSnapshot, getPortfolioSnapshots } from '../../services/dbService';
 import { fetchStockQuotes, formatCurrency, BIST_STOCKS } from '../../services/stockService';
-import { Portfolio, Stock } from '../../types';
+import { Portfolio, Stock, PortfolioSnapshot } from '../../types';
 
 interface PositionWithValue extends Portfolio {
   stock_name: string;
@@ -30,10 +31,12 @@ export default function PortfolioScreen({ navigation }: any) {
   const { user } = useAuth();
   const { selectedLeague, membership, setMembership } = useLeague();
   const { colors } = useTheme();
+  const { width: SCREEN_W } = useWindowDimensions();
   const [positions, setPositions] = useState<PositionWithValue[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [portfolioValue, setPortfolioValue] = useState(0);
+  const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
 
   const loadPortfolio = useCallback(async () => {
     if (!user || !selectedLeague) { setLoading(false); return; }
@@ -73,6 +76,13 @@ export default function PortfolioScreen({ navigation }: any) {
     const mem = await getLeagueMembership(selectedLeague.id, user.id);
     setMembership(mem);
 
+    // Save today's snapshot and load history
+    const cash = mem?.cash_balance || 0;
+    const totalValue = cash + total;
+    await savePortfolioSnapshot(user.id, selectedLeague.id, totalValue);
+    const snaps = await getPortfolioSnapshots(user.id, selectedLeague.id);
+    setSnapshots(snaps);
+
     setLoading(false);
     setRefreshing(false);
   }, [user, selectedLeague]);
@@ -80,19 +90,16 @@ export default function PortfolioScreen({ navigation }: any) {
   useFocusEffect(useCallback(() => { loadPortfolio(); }, [loadPortfolio]));
 
   function goToStock(item: PositionWithValue) {
-    navigation.navigate('Market', {
-      screen: 'StockDetail',
-      params: {
-        stock: {
-          symbol: item.stock_symbol,
-          name: item.stock_name,
-          price: item.current_price,
-          previous_close: item.avg_buy_price,
-          change: item.current_price - item.avg_buy_price,
-          change_percent: item.profit_loss_pct,
-          volume: 0,
-          last_updated: '',
-        },
+    navigation.navigate('StockDetail', {
+      stock: {
+        symbol: item.stock_symbol,
+        name: item.stock_name,
+        price: item.current_price,
+        previous_close: item.avg_buy_price,
+        change: item.current_price - item.avg_buy_price,
+        change_percent: item.profit_loss_pct,
+        volume: 0,
+        last_updated: '',
       },
     });
   }
@@ -144,6 +151,48 @@ export default function PortfolioScreen({ navigation }: any) {
         </View>
       </View>
 
+      {/* Portfolio History Chart */}
+      {snapshots.length > 1 && (() => {
+        const startingBalance = selectedLeague?.starting_balance || 100000;
+        const chartData = snapshots.map(s => s.total_value);
+        const chartLabels = snapshots.map((s, i) => {
+          const n = snapshots.length;
+          if (i === 0 || i === Math.floor(n / 2) || i === n - 1) return s.snapshot_date.slice(5);
+          return '';
+        });
+        const latest = chartData[chartData.length - 1];
+        const isUp = latest >= startingBalance;
+        return (
+          <View style={[styles.historySection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Portföy Geçmişi</Text>
+            <LineChart
+              data={{ labels: chartLabels, datasets: [{ data: chartData, strokeWidth: 2 }] }}
+              width={SCREEN_W - 64}
+              height={150}
+              chartConfig={{
+                backgroundColor: colors.surface,
+                backgroundGradientFrom: colors.surface,
+                backgroundGradientTo: colors.surface,
+                color: (opacity = 1) => isUp ? `rgba(0,208,132,${opacity})` : `rgba(248,81,73,${opacity})`,
+                labelColor: () => colors.subtext,
+                strokeWidth: 2,
+                propsForDots: { r: '0' },
+                fillShadowGradientOpacity: 0.2,
+                fillShadowGradientToOpacity: 0,
+                decimalPlaces: 0,
+              }}
+              bezier
+              withDots={false}
+              withInnerLines={false}
+              withOuterLines={false}
+              withVerticalLines={false}
+              withHorizontalLines={false}
+              style={{ borderRadius: 8, marginLeft: -16 }}
+            />
+          </View>
+        );
+      })()}
+
       {/* Best / Worst */}
       {positions.length >= 2 && (
         <View style={styles.bestWorstRow}>
@@ -185,8 +234,7 @@ export default function PortfolioScreen({ navigation }: any) {
         <Text style={[styles.empty, { color: colors.subtext }]}>Portföyünde hisse yok. Markete git ve satın al!</Text>
       ) : (
         positions.map(item => (
-          <View key={item.id} style={[styles.positionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadPortfolio(); }} tintColor={colors.accent} />
+          <TouchableOpacity key={item.id} style={[styles.positionCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => goToStock(item)} activeOpacity={0.7}>
             <View style={styles.posMain}>
               <View style={styles.posLeft}>
                 <Text style={[styles.posSymbol, { color: colors.text }]}>{item.stock_symbol}</Text>
@@ -210,7 +258,7 @@ export default function PortfolioScreen({ navigation }: any) {
                 <Text style={styles.sellBtnText}>Sat</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
         ))
       )}
 
@@ -236,6 +284,7 @@ const styles = StyleSheet.create({
   bwLabel: { fontSize: 11, fontWeight: 'bold', marginBottom: 4 },
   bwSymbol: { fontSize: 16, fontWeight: 'bold' },
   bwPct: { fontSize: 13, fontWeight: 'bold', marginTop: 2 },
+  historySection: { borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1 },
   sectorSection: { borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1 },
   sectionTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 12 },
   sectorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Dimensions,
+  TextInput, ActivityIndicator, Modal, useWindowDimensions,
 } from 'react-native';
 import { fetchStockHistory, formatCurrency } from '../../services/stockService';
 import StockLogo from '../../components/StockLogo';
@@ -10,11 +10,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useLeague } from '../../context/LeagueContext';
 import { useTheme } from '../../context/ThemeContext';
 import { StockHistory, Stock } from '../../types';
-import { LineChart } from 'react-native-chart-kit';
-
-const SCREEN_W = Dimensions.get('window').width;
+import PriceChart from '../../components/PriceChart';
 
 type Range = '1d' | '5d' | '1mo' | '3mo' | '6mo' | '1y';
+
 
 const RANGE_OPTIONS: { key: Range; label: string }[] = [
   { key: '1d',  label: '1G' },
@@ -30,6 +29,7 @@ export default function StockDetailScreen({ route, navigation }: any) {
   const { user } = useAuth();
   const { selectedLeague, membership, setMembership } = useLeague();
   const { colors } = useTheme();
+  const { width: SCREEN_W } = useWindowDimensions();
 
   const [history, setHistory] = useState<StockHistory[]>([]);
   const [range, setRange] = useState<Range>('1mo');
@@ -51,6 +51,8 @@ export default function StockDetailScreen({ route, navigation }: any) {
   const [alertSuccess, setAlertSuccess] = useState<string | null>(null);
 
   const isPositive = stock.change >= 0;
+  const isMounted = useRef(true);
+  useEffect(() => { isMounted.current = true; return () => { isMounted.current = false; }; }, []);
 
   useEffect(() => { loadHistory(); }, [range]);
   useEffect(() => { loadOwnedQty(); }, [selectedLeague, user]);
@@ -59,6 +61,7 @@ export default function StockDetailScreen({ route, navigation }: any) {
   async function loadHistory() {
     setHistoryLoading(true);
     const data = await fetchStockHistory(stock.symbol, range);
+    if (!isMounted.current) return;
     setHistory(data);
     setHistoryLoading(false);
   }
@@ -66,6 +69,7 @@ export default function StockDetailScreen({ route, navigation }: any) {
   async function loadOwnedQty() {
     if (!user || !selectedLeague) return;
     const portfolio = await getUserPortfolio(user.id, selectedLeague.id);
+    if (!isMounted.current) return;
     const pos = portfolio.find(p => p.stock_symbol === stock.symbol);
     setOwnedQty(pos?.quantity || 0);
   }
@@ -73,6 +77,7 @@ export default function StockDetailScreen({ route, navigation }: any) {
   async function loadAlerts() {
     if (!user) return;
     const data = await getUserAlerts(user.id);
+    if (!isMounted.current) return;
     setAlerts(data.filter(a => a.stock_symbol === stock.symbol));
   }
 
@@ -84,8 +89,8 @@ export default function StockDetailScreen({ route, navigation }: any) {
       setTradeError('Aktif lig seçmelisin.');
       return;
     }
-    const qty = parseInt(quantity);
-    if (!qty || qty <= 0) {
+    const qty = parseInt(quantity, 10);
+    if (isNaN(qty) || qty <= 0) {
       setTradeError('Geçerli bir miktar gir.');
       return;
     }
@@ -142,21 +147,16 @@ export default function StockDetailScreen({ route, navigation }: any) {
     await loadAlerts();
   }
 
-  const chartSlice = history;
-  const chartData = chartSlice.map(h => h.close);
+  const chartData = history.map(h => h.close);
   const chartMin = chartData.length > 0 ? Math.min(...chartData) : 0;
   const chartMax = chartData.length > 0 ? Math.max(...chartData) : 0;
-  const chartStart = chartSlice[0]?.close || 0;
-  const chartEnd = chartSlice[chartSlice.length - 1]?.close || 0;
+  const chartStart = history[0]?.close || 0;
+  const chartEnd = history[history.length - 1]?.close || 0;
   const periodChange = chartStart > 0 ? ((chartEnd - chartStart) / chartStart) * 100 : 0;
-  const chartLabels = chartSlice.map((h, i) => {
-    const n = chartSlice.length;
-    if (i === 0 || i === Math.floor(n / 2) || i === n - 1) return h.date.slice(5);
-    return '';
-  });
 
-  const totalCost = stock.price > 0 && quantity ? stock.price * parseInt(quantity || '0') : 0;
-  const commission = Math.ceil(totalCost * 0.002);
+  const parsedQty = parseInt(quantity, 10);
+  const totalCost = stock.price > 0 && !isNaN(parsedQty) && parsedQty > 0 ? stock.price * parsedQty : 0;
+  const commission = Math.round(totalCost * 0.002 * 100) / 100;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.bg }]} showsVerticalScrollIndicator={false}>
@@ -217,29 +217,13 @@ export default function StockDetailScreen({ route, navigation }: any) {
           <View style={[styles.chartPlaceholder, { backgroundColor: colors.surface }]}><ActivityIndicator color={colors.accent} /></View>
         ) : chartData.length > 1 ? (
           <>
-            <LineChart
-              data={{ labels: chartLabels, datasets: [{ data: chartData, strokeWidth: 2 }] }}
+            <PriceChart
+              data={history}
               width={SCREEN_W - 32}
-              height={180}
-              chartConfig={{
-                backgroundColor: colors.surface,
-                backgroundGradientFrom: colors.surface,
-                backgroundGradientTo: colors.surface,
-                color: (opacity = 1) => isPositive ? `rgba(0,208,132,${opacity})` : `rgba(248,81,73,${opacity})`,
-                labelColor: () => colors.subtext,
-                strokeWidth: 2,
-                propsForDots: { r: '0' },
-                fillShadowGradientOpacity: 0.2,
-                fillShadowGradientToOpacity: 0,
-                decimalPlaces: 2,
-              }}
-              bezier
-              style={styles.chart}
-              withDots={false}
-              withInnerLines={false}
-              withOuterLines={false}
-              withVerticalLines={false}
-              withHorizontalLines={false}
+              height={220}
+              colors={colors}
+              isPositive={periodChange >= 0}
+              range={range}
             />
             <View style={[styles.chartStats, { backgroundColor: colors.surface }]}>
               <View style={styles.chartStatItem}>
@@ -300,8 +284,8 @@ export default function StockDetailScreen({ route, navigation }: any) {
               placeholder="Adet gir"
               placeholderTextColor={colors.subtext}
               value={quantity}
-              onChangeText={setQuantity}
-              keyboardType="numeric"
+              onChangeText={v => setQuantity(v.replace(/[^0-9]/g, ''))}
+              keyboardType="number-pad"
             />
 
             {quantity.length > 0 && parseInt(quantity) > 0 && (

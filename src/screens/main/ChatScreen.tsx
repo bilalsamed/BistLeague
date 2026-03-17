@@ -15,7 +15,7 @@ export default function ChatScreen() {
   const { user, profile } = useAuth();
   const { selectedLeague } = useLeague();
   const { colors } = useTheme();
-  const { resetChat } = useUnread();
+  const { resetChat, onChatBlur } = useUnread();
   const [messages, setMessages] = useState<LeagueMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -32,6 +32,7 @@ export default function ChatScreen() {
   useFocusEffect(useCallback(() => {
     resetChat();
     loadMessages();
+    return () => onChatBlur();
   }, [loadMessages]));
 
   // Realtime subscription

@@ -167,7 +167,7 @@ export default function LeaderboardScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modal, { backgroundColor: colors.surface }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>{selectedMember?.profile?.username}'nin Portföyü</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{selectedMember?.profile?.username || 'Kullanıcı'}'nin Portföyü</Text>
               <TouchableOpacity onPress={() => setSelectedMember(null)}>
                 <Text style={[styles.closeBtn, { color: colors.subtext }]}>✕</Text>
               </TouchableOpacity>
@@ -182,13 +182,23 @@ export default function LeaderboardScreen() {
               <ScrollView style={styles.portfolioList}>
                 {memberPortfolio.map(p => (
                   <View key={p.id} style={[styles.portfolioRow, { borderBottomColor: colors.surfaceAlt }]}>
-                    <View>
+                    <View style={{ flex: 1 }}>
                       <Text style={[styles.pSymbol, { color: colors.text }]}>{p.stock_symbol}</Text>
                       <Text style={[styles.pName, { color: colors.subtext }]}>{p.stock_name}</Text>
                     </View>
                     <View style={styles.pRight}>
                       <Text style={[styles.pQty, { color: colors.subtext }]}>{p.quantity} adet</Text>
                       <Text style={[styles.pValue, { color: colors.text }]}>{formatCurrency(p.current_value)}</Text>
+                      {(() => {
+                        const pl = (p.current_price - p.avg_buy_price) * p.quantity;
+                        const plPct = p.avg_buy_price > 0 ? ((p.current_price - p.avg_buy_price) / p.avg_buy_price) * 100 : 0;
+                        const pos = pl >= 0;
+                        return (
+                          <Text style={[styles.pPL, { color: pos ? colors.accent : colors.danger }]}>
+                            {pos ? '+' : ''}{formatCurrency(pl)} ({pos ? '+' : ''}{plPct.toFixed(2)}%)
+                          </Text>
+                        );
+                      })()}
                     </View>
                   </View>
                 ))}
@@ -240,4 +250,5 @@ const styles = StyleSheet.create({
   pRight: { alignItems: 'flex-end' },
   pQty: { fontSize: 12 },
   pValue: { fontWeight: 'bold' },
+  pPL: { fontSize: 11, marginTop: 1 },
 });

@@ -18,6 +18,8 @@ export default function RegisterScreen({ navigation }: Props) {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'error' | 'success' } | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const { signUp } = useAuth();
   const { colors } = useTheme();
 
@@ -89,22 +91,32 @@ export default function RegisterScreen({ navigation }: Props) {
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-          placeholder="Şifre"
-          placeholderTextColor={colors.subtext}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-          placeholder="Şifre Tekrar"
-          placeholderTextColor={colors.subtext}
-          value={passwordConfirm}
-          onChangeText={setPasswordConfirm}
-          secureTextEntry
-        />
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border, marginBottom: 0, flex: 1 }]}
+            placeholder="Şifre"
+            placeholderTextColor={colors.subtext}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(v => !v)}>
+            <Text style={[styles.eyeIcon, { color: colors.subtext }]}>{showPassword ? '🙈' : '👁'}</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border, marginBottom: 0, flex: 1 }]}
+            placeholder="Şifre Tekrar"
+            placeholderTextColor={colors.subtext}
+            value={passwordConfirm}
+            onChangeText={setPasswordConfirm}
+            secureTextEntry={!showPasswordConfirm}
+          />
+          <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPasswordConfirm(v => !v)}>
+            <Text style={[styles.eyeIcon, { color: colors.subtext }]}>{showPasswordConfirm ? '🙈' : '👁'}</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={[styles.button, { backgroundColor: colors.accent }]} onPress={handleRegister} disabled={loading}>
           {loading ? (
@@ -130,6 +142,9 @@ const styles = StyleSheet.create({
   messageBanner: { borderRadius: 10, padding: 12, marginBottom: 16 },
   messageText: { fontSize: 14, textAlign: 'center' },
   input: { borderRadius: 10, padding: 14, marginBottom: 14, fontSize: 15, borderWidth: 1 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  eyeBtn: { position: 'absolute', right: 14, padding: 4 },
+  eyeIcon: { fontSize: 18 },
   button: { borderRadius: 10, padding: 15, alignItems: 'center', marginTop: 8, marginBottom: 20 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   link: { textAlign: 'center', fontSize: 14 },

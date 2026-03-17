@@ -60,6 +60,16 @@ export interface Stock {
   change_percent: number;
   volume?: number;
   last_updated?: string;
+  market_time?: number;
+}
+
+export interface PortfolioSnapshot {
+  id: string;
+  user_id: string;
+  league_id: string;
+  total_value: number;
+  snapshot_date: string;
+  created_at: string;
 }
 
 export interface StockHistory {
