@@ -6,6 +6,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { LeagueProvider } from './src/context/LeagueContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { UnreadProvider } from './src/context/UnreadContext';
+import { FavoritesProvider } from './src/context/FavoritesContext';
 import Navigation from './src/navigation';
 
 function AppContent() {
@@ -25,7 +26,9 @@ export default function App() {
       <AuthProvider>
         <LeagueProvider>
           <UnreadProvider>
-            <AppContent />
+            <FavoritesProvider>
+              <AppContent />
+            </FavoritesProvider>
           </UnreadProvider>
         </LeagueProvider>
       </AuthProvider>

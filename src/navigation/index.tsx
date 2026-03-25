@@ -19,9 +19,7 @@ import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import MarketScreen from '../screens/main/MarketScreen';
 import StockDetailScreen from '../screens/main/StockDetailScreen';
 import PortfolioScreen from '../screens/main/PortfolioScreen';
-import LeaguesScreen from '../screens/main/LeaguesScreen';
 import LeaderboardScreen from '../screens/main/LeaderboardScreen';
-import HistoryScreen from '../screens/main/HistoryScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import ChatScreen from '../screens/main/ChatScreen';
 import OnboardingScreen from '../screens/main/OnboardingScreen';
@@ -33,10 +31,8 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
     Market: '📊',
     Portfolio: '💼',
-    Leagues: '🏆',
-    Leaderboard: '📈',
+    Leaderboard: '🏆',
     Chat: '💬',
-    History: '📋',
     Profile: '👤',
   };
   return (
@@ -84,10 +80,8 @@ function MainTabs() {
     >
       <Tab.Screen name="Market" component={MarketStack} options={{ tabBarLabel: 'Piyasa' }} />
       <Tab.Screen name="Portfolio" component={PortfolioStack} options={{ tabBarLabel: 'Portföy' }} />
-      <Tab.Screen name="Leagues" component={LeaguesScreen} options={{ tabBarLabel: 'Ligler' }} />
-      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ tabBarLabel: 'Sıralama' }} />
+      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ tabBarLabel: 'Lig' }} />
       <Tab.Screen name="Chat" component={ChatScreen} options={{ tabBarLabel: 'Sohbet', tabBarBadge: chatUnread > 0 ? chatUnread : undefined }} />
-      <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarLabel: 'Geçmiş' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Profil' }} />
     </Tab.Navigator>
   );

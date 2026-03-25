@@ -36,7 +36,7 @@ export const BIST_STOCKS: { symbol: string; name: string; sector: StockSector }[
   { symbol: 'TCELL', name: 'Turkcell',              sector: 'Teknoloji' },
   { symbol: 'TTKOM', name: 'Türk Telekom',          sector: 'Teknoloji' },
   { symbol: 'ENKAI', name: 'Enka İnşaat',           sector: 'İnşaat' },
-  { symbol: 'KOZAL', name: 'Koza Altın',            sector: 'Madencilik' },
+  { symbol: 'TRALT', name: 'Türkiye Altın',          sector: 'Madencilik' },
   { symbol: 'MGROS', name: 'Migros',                sector: 'Perakende' },
   { symbol: 'ISCTR', name: 'İş Bankası C',          sector: 'Bankacılık' },
   { symbol: 'EKGYO', name: 'Emlak Konut GYO',       sector: 'GYO' },
@@ -53,7 +53,6 @@ export const BIST_STOCKS: { symbol: string; name: string; sector: StockSector }[
   { symbol: 'AKSA',  name: 'Aksa Akrilik',          sector: 'Kimya' },
   { symbol: 'AKSEN', name: 'Aksa Enerji',           sector: 'Enerji' },
   { symbol: 'ALARK', name: 'Alarko Holding',        sector: 'Holding' },
-  { symbol: 'ANACM', name: 'Anadolu Cam',           sector: 'Sanayi' },
   { symbol: 'ANHYT', name: 'Anadolu Hayat Emeklilik', sector: 'Sigorta' },
   { symbol: 'ANSGR', name: 'Anadolu Sigorta',       sector: 'Sigorta' },
   { symbol: 'ASTOR', name: 'Astor Enerji',          sector: 'Enerji' },
@@ -83,7 +82,6 @@ export const BIST_STOCKS: { symbol: string; name: string; sector: StockSector }[
   { symbol: 'GSRAY', name: 'Galatasaray',           sector: 'Diğer' },
   { symbol: 'GUBRF', name: 'Gübre Fabrikaları',     sector: 'Kimya' },
   { symbol: 'HEKTS', name: 'Hektaş',               sector: 'Kimya' },
-  { symbol: 'IPEKE', name: 'İpek Enerji',           sector: 'Enerji' },
   { symbol: 'ISFIN', name: 'İş Finansal Kiralama',  sector: 'Bankacılık' },
   { symbol: 'ISGYO', name: 'İş GYO',               sector: 'GYO' },
   { symbol: 'ISMEN', name: 'İş Yatırım',            sector: 'Bankacılık' },
@@ -92,7 +90,6 @@ export const BIST_STOCKS: { symbol: string; name: string; sector: StockSector }[
   { symbol: 'KARTN', name: 'Kartonsan',             sector: 'Sanayi' },
   { symbol: 'KCAER', name: 'Koç Allianz Sigorta',   sector: 'Sigorta' },
   { symbol: 'KORDS', name: 'Kordsa',               sector: 'Sanayi' },
-  { symbol: 'KOZAA', name: 'Koza Anadolu Metal',    sector: 'Madencilik' },
   { symbol: 'LOGO',  name: 'Logo Yazılım',          sector: 'Teknoloji' },
   { symbol: 'MAVI',  name: 'Mavi Giyim',            sector: 'Perakende' },
   { symbol: 'MPARK', name: 'Medical Park',          sector: 'Sağlık' },
@@ -104,12 +101,10 @@ export const BIST_STOCKS: { symbol: string; name: string; sector: StockSector }[
   { symbol: 'PARSN', name: 'Parsan',                sector: 'Otomotiv' },
   { symbol: 'PRKME', name: 'Park Elektrik',         sector: 'Madencilik' },
   { symbol: 'REEDR', name: 'Reeder Teknoloji',      sector: 'Teknoloji' },
-  { symbol: 'RZGYO', name: 'Ronesans GYO',          sector: 'GYO' },
   { symbol: 'SARKY', name: 'Sarkuysan',             sector: 'Sanayi' },
   { symbol: 'SELEC', name: 'Selçuk Ecza',           sector: 'Sağlık' },
   { symbol: 'SKBNK', name: 'Şekerbank',             sector: 'Bankacılık' },
   { symbol: 'SMRTG', name: 'Smart Güneş Enerjisi',  sector: 'Enerji' },
-  { symbol: 'SODA',  name: 'Soda Sanayii',          sector: 'Kimya' },
   { symbol: 'TATGD', name: 'Tat Gıda',              sector: 'Gıda' },
   { symbol: 'TKNSA', name: 'Teknosa',               sector: 'Perakende' },
   { symbol: 'TRGYO', name: 'Torunlar GYO',          sector: 'GYO' },
@@ -140,7 +135,6 @@ export const BIST_STOCKS: { symbol: string; name: string; sector: StockSector }[
   { symbol: 'TSPOR', name: 'Trabzonspor',           sector: 'Diğer' },
   { symbol: 'BJKAS', name: 'Beşiktaş JK',           sector: 'Diğer' },
   { symbol: 'GSDHO', name: 'GSD Holding',           sector: 'Holding' },
-  { symbol: 'TIRE',  name: 'Tire Kutsan',           sector: 'Sanayi' },
   { symbol: 'MTRKS', name: 'Matriks Bilgi Dağıtım', sector: 'Teknoloji' },
   { symbol: 'ATAGY', name: 'Ata GYO',               sector: 'GYO' },
   { symbol: 'DENGE', name: 'Denge Yatırım Holding', sector: 'Holding' },
@@ -156,9 +150,28 @@ export const BIST_STOCKS: { symbol: string; name: string; sector: StockSector }[
   { symbol: 'KFEIN', name: 'Kafein Yazılım',        sector: 'Teknoloji' },
   { symbol: 'NATEN', name: 'Naten Elektrik',        sector: 'Enerji' },
   { symbol: 'VKGYO', name: 'Vakıf GYO',             sector: 'GYO' },
-  { symbol: 'PEHOL', name: 'Pe Holding',            sector: 'Holding' },
   { symbol: 'GEDZA', name: 'Gediz Ambalaj',         sector: 'Sanayi' },
-  { symbol: 'SERVE', name: 'Serve Kırtasiye',       sector: 'Perakende' },
+  // Piyasa değeri yüksek ek hisseler
+  { symbol: 'AYGAZ', name: 'Aygaz',                 sector: 'Enerji' },
+  { symbol: 'KRDMD', name: 'Kardemir D',            sector: 'Madencilik' },
+  { symbol: 'AKCNS', name: 'Akcansa Çimento',       sector: 'İnşaat' },
+  { symbol: 'ALBRK', name: 'Albaraka Türk',         sector: 'Bankacılık' },
+  { symbol: 'NUHCM', name: 'Nuh Çimento',           sector: 'İnşaat' },
+  { symbol: 'AKENR', name: 'Akenerji',              sector: 'Enerji' },
+  { symbol: 'AKGRT', name: 'Aksigorta',             sector: 'Sigorta' },
+  { symbol: 'ASUZU', name: 'Anadolu Isuzu',         sector: 'Otomotiv' },
+  { symbol: 'KOTON', name: 'Koton',                 sector: 'Perakende' },
+  { symbol: 'ARENA', name: 'Arena Bilgisayar',      sector: 'Teknoloji' },
+  { symbol: 'ARZUM', name: 'Arzum Ev Aletleri',     sector: 'Sanayi' },
+  { symbol: 'PRKAB', name: 'Türk Prysmian Kablo',   sector: 'Sanayi' },
+  { symbol: 'ULUSE', name: 'Ulusoy Elektrik',       sector: 'Enerji' },
+  { symbol: 'EBEBK', name: 'ebebek',                sector: 'Perakende' },
+  { symbol: 'VAKKO', name: 'Vakko Tekstil',         sector: 'Sanayi' },
+  { symbol: 'QNBFK', name: 'QNB Finansal Kiralama', sector: 'Bankacılık' },
+  { symbol: 'BAGFS', name: 'Bağfaş Gübre',          sector: 'Kimya' },
+  { symbol: 'ALKIM', name: 'Alkim Kimya',           sector: 'Kimya' },
+  { symbol: 'CRFSA', name: 'CarrefourSA',           sector: 'Perakende' },
+  { symbol: 'DESPC', name: 'Despec Bilgisayar',     sector: 'Teknoloji' },
 ];
 
 async function fetchWithTimeout(url: string, options?: RequestInit, ms = 10000): Promise<Response> {
@@ -326,6 +339,12 @@ async function fetchStocksFromCache(symbols: string[]): Promise<Stock[]> {
   }));
 }
 
+
+export function formatVolume(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
+  return v.toString();
+}
 
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('tr-TR', {

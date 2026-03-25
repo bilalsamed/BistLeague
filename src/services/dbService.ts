@@ -409,6 +409,40 @@ export async function savePortfolioSnapshot(userId: string, leagueId: string, to
   );
 }
 
+export async function saveLeagueSnapshots(leagueId: string, members: { user_id: string; total_value: number }[]): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  const rows = members.map(m => ({
+    user_id: m.user_id,
+    league_id: leagueId,
+    total_value: m.total_value,
+    snapshot_date: today,
+  }));
+  await supabase.from('portfolio_snapshots').upsert(rows, { onConflict: 'user_id,league_id,snapshot_date' });
+}
+
+export interface LeagueSnapshot {
+  user_id: string;
+  snapshot_date: string;
+  total_value: number;
+  username?: string;
+}
+
+export async function getLeagueSnapshots(leagueId: string, days = 30): Promise<LeagueSnapshot[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const { data } = await supabase
+    .from('portfolio_snapshots')
+    .select('user_id, snapshot_date, total_value')
+    .eq('league_id', leagueId)
+    .gte('snapshot_date', since.toISOString().split('T')[0])
+    .order('snapshot_date', { ascending: true });
+  return (data || []).map((r: any) => ({
+    user_id: r.user_id,
+    snapshot_date: r.snapshot_date,
+    total_value: r.total_value,
+  }));
+}
+
 export async function getPortfolioSnapshots(userId: string, leagueId: string, days = 30): Promise<PortfolioSnapshot[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);

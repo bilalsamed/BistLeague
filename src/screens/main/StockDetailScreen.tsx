@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useFavorites } from '../../hooks/useFavorites';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, ActivityIndicator, Modal, useWindowDimensions,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { fetchStockHistory, formatCurrency } from '../../services/stockService';
+import { fetchStockHistory, formatCurrency, formatVolume } from '../../services/stockService';
 import StockLogo from '../../components/StockLogo';
 import { buyStock, sellStock, getUserPortfolio, getLeagueMembership, getUserAlerts, createPriceAlert, deletePriceAlert, PriceAlert } from '../../services/dbService';
 import { useAuth } from '../../context/AuthContext';
@@ -30,12 +32,16 @@ export default function StockDetailScreen({ route, navigation }: any) {
   const { selectedLeague, membership, setMembership } = useLeague();
   const { colors } = useTheme();
   const { width: SCREEN_W } = useWindowDimensions();
+  const { favorites, toggleFavorite } = useFavorites();
+  const isFav = favorites.has(stock.symbol);
 
   const [history, setHistory] = useState<StockHistory[]>([]);
   const [range, setRange] = useState<Range>('1mo');
   const [historyLoading, setHistoryLoading] = useState(true);
   const [tradeModal, setTradeModal] = useState<'buy' | 'sell' | null>(null);
   const [quantity, setQuantity] = useState('');
+  const [inputMode, setInputMode] = useState<'qty' | 'amount'>('qty');
+  const [amountInput, setAmountInput] = useState('');
   const [tradeLoading, setTradeLoading] = useState(false);
   const [ownedQty, setOwnedQty] = useState(0);
   const [tradeError, setTradeError] = useState<string | null>(null);
@@ -81,9 +87,29 @@ export default function StockDetailScreen({ route, navigation }: any) {
     setAlerts(data.filter(a => a.stock_symbol === stock.symbol));
   }
 
+  function isMarketOpen(): boolean {
+    if (__DEV__) return true;
+    const ist = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+    const day = ist.getDay();
+    if (day === 0 || day === 6) return false;
+    const total = ist.getHours() * 60 + ist.getMinutes();
+    return total >= 10 * 60 + 15 && total <= 18 * 60 + 10;
+  }
+
   async function handleTrade() {
     setTradeError(null);
     setTradeSuccess(null);
+
+    if (!isMarketOpen()) {
+      const now = new Date();
+      const day = now.getDay();
+      if (day === 0 || day === 6) {
+        setTradeError('Hafta sonu işlem yapılamaz. Piyasa Pazartesi 10:15\'te açılır.');
+      } else {
+        setTradeError('Piyasa kapalı. İşlem saatleri: Hafta içi 10:15 – 18:10.');
+      }
+      return;
+    }
 
     if (!user || !selectedLeague) {
       setTradeError('Aktif lig seçmelisin.');
@@ -170,9 +196,15 @@ export default function StockDetailScreen({ route, navigation }: any) {
           <Text style={[styles.symbol, { color: colors.text }]}>{stock.symbol}</Text>
           <Text style={[styles.stockName, { color: colors.subtext }]}>{stock.name}</Text>
         </View>
+        <TouchableOpacity
+          onPress={() => toggleFavorite(stock.symbol)}
+          style={[styles.headerIconBtn, isFav ? { backgroundColor: 'rgba(255,200,0,0.18)', borderColor: 'rgba(255,200,0,0.4)' } : { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <Text style={[styles.headerIconText, { color: isFav ? '#f5c518' : colors.subtext }]}>{isFav ? '★' : '☆'}</Text>
+        </TouchableOpacity>
         {user && (
-          <TouchableOpacity onPress={() => setAlertModal(true)} style={[styles.alertBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={styles.alertBtnIcon}>🔔</Text>
+          <TouchableOpacity onPress={() => setAlertModal(true)} style={[styles.headerIconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={styles.headerIconText}>🔔</Text>
             {alerts.length > 0 && (
               <View style={[styles.alertBadge, { backgroundColor: colors.accent }]}>
                 <Text style={styles.alertBadgeText}>{alerts.length}</Text>
@@ -197,12 +229,17 @@ export default function StockDetailScreen({ route, navigation }: any) {
       </Text>
 
       {/* Portfolio info */}
-      {selectedLeague && (
-        <View style={[styles.infoRow, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.infoLabel, { color: colors.subtext }]}>Nakit: <Text style={[styles.infoVal, { color: colors.text }]}>{membership?.cash_balance?.toLocaleString('tr-TR')} ₺</Text></Text>
-          <Text style={[styles.infoLabel, { color: colors.subtext }]}>Portföyde: <Text style={[styles.infoVal, { color: colors.text }]}>{ownedQty} adet</Text></Text>
-        </View>
-      )}
+      <View style={[styles.infoRow, { backgroundColor: colors.surface }]}>
+        {selectedLeague && (
+          <>
+            <Text style={[styles.infoLabel, { color: colors.subtext }]}>Nakit: <Text style={[styles.infoVal, { color: colors.text }]}>{membership?.cash_balance?.toLocaleString('tr-TR')} ₺</Text></Text>
+            <Text style={[styles.infoLabel, { color: colors.subtext }]}>Portföyde: <Text style={[styles.infoVal, { color: colors.text }]}>{ownedQty} adet</Text></Text>
+          </>
+        )}
+        {(stock.volume ?? 0) > 0 && (
+          <Text style={[styles.infoLabel, { color: colors.subtext }]}>Hacim: <Text style={[styles.infoVal, { color: colors.text }]}>{formatVolume(stock.volume ?? 0)}</Text></Text>
+        )}
+      </View>
 
       {/* Chart */}
       <View style={styles.chartSection}>
@@ -250,18 +287,34 @@ export default function StockDetailScreen({ route, navigation }: any) {
       {/* Trade Buttons */}
       {selectedLeague && stock.price > 0 && (
         <View style={styles.tradeButtons}>
-          <TouchableOpacity style={[styles.buyBtn, { backgroundColor: colors.accent }]} onPress={() => setTradeModal('buy')}>
-            <Text style={styles.tradeBtnText}>Al</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.sellBtn, { backgroundColor: colors.danger }, ownedQty === 0 && styles.disabledBtn]} onPress={() => ownedQty > 0 && setTradeModal('sell')} disabled={ownedQty === 0}>
-            <Text style={styles.tradeBtnText}>Sat</Text>
-          </TouchableOpacity>
+          {!isMarketOpen() && (
+            <Text style={[styles.marketClosed, { color: colors.subtext }]}>
+              🔴 Piyasa kapalı • 10:15–18:10 Hafta içi
+            </Text>
+          )}
+          <View style={styles.tradeBtnRow}>
+            <TouchableOpacity
+              style={[styles.buyBtn, { backgroundColor: colors.accent }, !isMarketOpen() && styles.disabledBtn]}
+              onPress={() => setTradeModal('buy')}
+              disabled={!isMarketOpen()}
+            >
+              <Text style={styles.tradeBtnText}>Al</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sellBtn, { backgroundColor: colors.danger }, (ownedQty === 0 || !isMarketOpen()) && styles.disabledBtn]}
+              onPress={() => ownedQty > 0 && setTradeModal('sell')}
+              disabled={ownedQty === 0 || !isMarketOpen()}
+            >
+              <Text style={styles.tradeBtnText}>Sat</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
       {/* Trade Modal */}
       <Modal visible={tradeModal !== null} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}>
           <View style={[styles.modal, { backgroundColor: colors.surface }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>{tradeModal === 'buy' ? 'Hisse Al' : 'Hisse Sat'} — {stock.symbol}</Text>
             <Text style={[styles.modalPrice, { color: colors.subtext }]}>Fiyat: {formatCurrency(stock.price)}</Text>
@@ -279,14 +332,63 @@ export default function StockDetailScreen({ route, navigation }: any) {
               </View>
             )}
 
-            <TextInput
-              style={[styles.modalInput, { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border }]}
-              placeholder="Adet gir"
-              placeholderTextColor={colors.subtext}
-              value={quantity}
-              onChangeText={v => setQuantity(v.replace(/[^0-9]/g, ''))}
-              keyboardType="number-pad"
-            />
+            {/* Adet / Tutar toggle — sadece alırken */}
+            {tradeModal === 'buy' && (
+              <View style={[styles.modeToggle, { backgroundColor: colors.bg, borderColor: colors.border }]}>
+                <TouchableOpacity
+                  style={[styles.modeBtn, inputMode === 'qty' && { backgroundColor: colors.accent }]}
+                  onPress={() => { setInputMode('qty'); setAmountInput(''); }}
+                >
+                  <Text style={[styles.modeBtnText, { color: inputMode === 'qty' ? '#fff' : colors.subtext }]}>Adet</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modeBtn, inputMode === 'amount' && { backgroundColor: colors.accent }]}
+                  onPress={() => { setInputMode('amount'); setQuantity(''); }}
+                >
+                  <Text style={[styles.modeBtnText, { color: inputMode === 'amount' ? '#fff' : colors.subtext }]}>Tutar (₺)</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {inputMode === 'qty' || tradeModal === 'sell' ? (
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border }]}
+                placeholder="Adet gir"
+                placeholderTextColor={colors.subtext}
+                value={quantity}
+                onChangeText={v => setQuantity(v.replace(/[^0-9]/g, ''))}
+                keyboardType="number-pad"
+              />
+            ) : (
+              <>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border }]}
+                  placeholder="Tutar gir (₺)"
+                  placeholderTextColor={colors.subtext}
+                  value={amountInput}
+                  onChangeText={v => {
+                    setAmountInput(v.replace(/[^0-9]/g, ''));
+                    const qty = stock.price > 0 ? Math.floor(parseInt(v || '0') / stock.price) : 0;
+                    setQuantity(qty > 0 ? String(qty) : '');
+                  }}
+                  keyboardType="number-pad"
+                />
+                {amountInput.length > 0 && stock.price > 0 && (
+                  <Text style={[styles.amountHint, { color: colors.subtext }]}>
+                    ≈ {Math.floor(parseInt(amountInput || '0') / stock.price)} adet
+                  </Text>
+                )}
+              </>
+            )}
+
+            {tradeModal === 'sell' && ownedQty > 0 && (
+              <TouchableOpacity
+                style={[styles.sellAllBtn, { borderColor: colors.danger }]}
+                onPress={() => setQuantity(String(ownedQty))}
+              >
+                <Text style={[styles.sellAllText, { color: colors.danger }]}>Tümünü Sat ({ownedQty} adet)</Text>
+              </TouchableOpacity>
+            )}
 
             {quantity.length > 0 && parseInt(quantity) > 0 && (
               <View style={[styles.summary, { backgroundColor: colors.bg }]}>
@@ -300,7 +402,7 @@ export default function StockDetailScreen({ route, navigation }: any) {
             )}
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => { setTradeModal(null); setQuantity(''); setTradeError(null); setTradeSuccess(null); }}>
+              <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => { setTradeModal(null); setQuantity(''); setAmountInput(''); setInputMode('qty'); setTradeError(null); setTradeSuccess(null); }}>
                 <Text style={[styles.cancelText, { color: colors.subtext }]}>İptal</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.confirmBtn, tradeModal === 'sell' && { backgroundColor: colors.danger }, tradeModal === 'buy' && { backgroundColor: colors.accent }]} onPress={handleTrade} disabled={tradeLoading}>
@@ -308,12 +410,14 @@ export default function StockDetailScreen({ route, navigation }: any) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Price Alert Modal */}
       <Modal visible={alertModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}>
           <View style={[styles.modal, { backgroundColor: colors.surface }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>🔔 Fiyat Alarmı — {stock.symbol}</Text>
             <Text style={[styles.modalPrice, { color: colors.subtext }]}>Güncel: {formatCurrency(stock.price)}</Text>
@@ -380,7 +484,8 @@ export default function StockDetailScreen({ route, navigation }: any) {
               </View>
             )}
           </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       <View style={{ height: 40 }} />
@@ -396,6 +501,8 @@ const styles = StyleSheet.create({
   symbol: { fontSize: 22, fontWeight: 'bold' },
   stockName: { fontSize: 13 },
   alertBtn: { padding: 8, borderRadius: 10, borderWidth: 1, position: 'relative' },
+  headerIconBtn: { width: 38, height: 38, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  headerIconText: { fontSize: 18 },
   alertBtnIcon: { fontSize: 18 },
   alertBadge: { position: 'absolute', top: -4, right: -4, borderRadius: 8, width: 16, height: 16, justifyContent: 'center', alignItems: 'center' },
   alertBadgeText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
@@ -418,7 +525,9 @@ const styles = StyleSheet.create({
   chartStatItem: { alignItems: 'center', flex: 1 },
   chartStatLabel: { fontSize: 10, marginBottom: 3 },
   chartStatVal: { fontSize: 13, fontWeight: 'bold' },
-  tradeButtons: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  tradeButtons: { marginBottom: 20 },
+  marketClosed: { fontSize: 12, textAlign: 'center', marginBottom: 8 },
+  tradeBtnRow: { flexDirection: 'row', gap: 12 },
   buyBtn: { flex: 1, borderRadius: 12, padding: 16, alignItems: 'center' },
   sellBtn: { flex: 1, borderRadius: 12, padding: 16, alignItems: 'center' },
   disabledBtn: { opacity: 0.4 },
@@ -432,7 +541,13 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 13, textAlign: 'center' },
   successBox: { borderRadius: 8, padding: 10, marginBottom: 10, borderWidth: 1 },
   successText: { fontSize: 13, textAlign: 'center' },
-  modalInput: { borderRadius: 8, padding: 12, marginBottom: 12, borderWidth: 1, fontSize: 16 },
+  modalInput: { borderRadius: 8, padding: 12, marginBottom: 8, borderWidth: 1, fontSize: 16 },
+  sellAllBtn: { borderRadius: 8, borderWidth: 1, paddingVertical: 8, alignItems: 'center', marginBottom: 12 },
+  modeToggle: { flexDirection: 'row', borderRadius: 8, borderWidth: 1, marginBottom: 12, overflow: 'hidden' },
+  modeBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6 },
+  modeBtnText: { fontSize: 13, fontWeight: '600' },
+  amountHint: { fontSize: 12, marginTop: -8, marginBottom: 10, marginLeft: 4 },
+  sellAllText: { fontSize: 13, fontWeight: '600' },
   summary: { borderRadius: 8, padding: 12, marginBottom: 16 },
   summaryLine: { fontSize: 13, marginBottom: 4 },
   summaryVal: { fontWeight: 'bold' },

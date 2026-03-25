@@ -188,8 +188,8 @@ export default function MarketScreen({ navigation }: any) {
             style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => navigation.navigate('StockDetail', { stock: item })}
           >
-            <TouchableOpacity onPress={() => toggleFavorite(item.symbol)} style={styles.starBtn}>
-              <Text style={styles.starIcon}>{favorites.has(item.symbol) ? '⭐' : '☆'}</Text>
+            <TouchableOpacity onPress={() => toggleFavorite(item.symbol)} style={[styles.starBtn, favorites.has(item.symbol) && styles.starBtnActive]}>
+              <Text style={styles.starIcon}>{favorites.has(item.symbol) ? '★' : '☆'}</Text>
             </TouchableOpacity>
             <StockLogo symbol={item.symbol} size={38} />
             <View style={styles.left}>
@@ -249,8 +249,9 @@ const styles = StyleSheet.create({
   sortBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
   sortBtnText: { fontSize: 12, fontWeight: '600' },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, gap: 8, borderRadius: 0 },
-  starBtn: { padding: 2 },
-  starIcon: { fontSize: 14 },
+  starBtn: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(128,128,128,0.12)' },
+  starBtnActive: { backgroundColor: 'rgba(255,200,0,0.18)' },
+  starIcon: { fontSize: 16 },
   left: { flex: 1 },
   right: { alignItems: 'flex-end' },
   rightBottom: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
