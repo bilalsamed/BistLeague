@@ -89,10 +89,11 @@ export default function StockDetailScreen({ route, navigation }: any) {
 
   function isMarketOpen(): boolean {
     if (__DEV__) return true;
-    const ist = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
-    const day = ist.getDay();
+    // Türkiye UTC+3 sabit (2016'dan beri yaz saati yok)
+    const ist = new Date(Date.now() + 3 * 60 * 60 * 1000);
+    const day = ist.getUTCDay();
     if (day === 0 || day === 6) return false;
-    const total = ist.getHours() * 60 + ist.getMinutes();
+    const total = ist.getUTCHours() * 60 + ist.getUTCMinutes();
     return total >= 10 * 60 + 15 && total <= 18 * 60 + 10;
   }
 
